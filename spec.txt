@@ -1,0 +1,94 @@
+=== Overview ===
+* Custom designed computer
+* 8-bit data width
+* 16-bit address bus -> 64KiB (Up to 16MiB with banking)
+* Memory banking with 8-bit MB register -> 256 possible memory banks, each 16KiB
+* Device I/O with inb and outb instructions
+
+=== Instructions ===
+
+--- Instruction layout ---
+ XXXXYZZZ
+X - 4-bit instruction identifier
+Y - Is immediate bit (0 - register, 1 - immediate)
+Z - 3-bit register identifier
+
+--- Instruction set ---
+0: MOV  reg, reg/im8   | reg = reg/im8
+1: LDW  reg, [HL/im16] | reg = [HL/im16]
+2: STW  [HL/im16], reg | [HL/im16] = reg
+3: PUSH reg/im8        | [SP--] = reg/im8
+4: POP  reg            | reg = [++SP]
+5: LDA  im16           | HL = im16
+6: JNZ  reg/im8        | reg/im8 != 0 ? PC = HL : NOP
+7: INB  reg, reg/im8   | reg = PORT[reg/im8]
+8: OUTB reg, reg/im8   | PORT[reg/im8] = reg
+9: ADD* reg, reg/im8   | reg += reg/im8
+A: ADC* reg, reg/im8   | reg += reg/im8 + c
+B: AND  reg, reg/im8   | reg &= reg/im8
+C: OR   reg, reg/im8   | reg |= reg/im8
+D: NOR  reg, reg/im8   | reg = ~(reg | reg/im8)
+E: CMP* reg, reg/im8   | f = cmp(reg, reg/im8)
+F: SUB* reg, reg/im8   | reg -= reg/im8 - b
+
+reg  - A register
+im8  - An 8-bit immediate value (Immediates are bytes following immediatly after the instruction)
+im16 - A 16-bit immediate value
+
+*Modifies flags
+
+=== Registers ===
+Registers can be accesed in instructions using their identifier
+
+0: A - General Purpose
+1: B - General Purpose
+2: C - General Purpose
+3: D - General Purpose
+4: Z - General Purpose
+5: H - Index high
+6: L - Index low
+7: F - Flags (Least to most significant bit)
+    LESS
+    EQUAL
+    CARRY
+    BORROW
+
+=== Memory Layout ===
+0x0000 ... 0x7fff: General purpose ROM
+0x8000 ... 0xbfff: General purpose RAM (Banked)
+0xc000 ... 0xffef: General purpose RAM
+0xfff0 ... 0xffff: Memory mapped registers
+    0xfff0 ... 0xfffa: RESERVED
+    0xfffb ... 0xfffb: Memory Bank (MB)
+    0xfffc ... 0xfffd: Stack Pointer (SP)
+    0xfffe ... 0xffff: Program Counter (PC)
+
+--- Memory banking ---
+Memory banks (at 0x8000 ... 0xbfff) may be swapped by setting the MB register
+MB = 0: Built-in RAM
+MB = 1: Built-in VRAM
+
+=== I/O Ports ===
+I/O Ports may be used to comunicate with external Input/Output devices (ie. a keyboard, mouse)
+They can be accessed using the inb and outb instructions 
+
+--- Reserved ports ---
+0x00: Status Register (Least to most significant bit)
+    Halt    (RW)
+    Error   (RO)
+    Power   (RW)
+
+0x01: Graphics Mode Register (See Video Output)
+
+=== Video Output ===
+Video output data is stored in Video Memory (VRAM)
+By default, graphics mode 00 - Monochrome is selected
+
+--- Graphics modes ---
+Graphics modes may be changed using port 0x01
+
+Available modes:
+00: Monochrome 256x256, 1 Bpp, Linear (8 KiB)
+01: 4 Color 265x128, 2 Bpp, Linear (8 KiB)
+02: 16 Color 256x128, 4 Bpp, Linear (16 KiB)
+
