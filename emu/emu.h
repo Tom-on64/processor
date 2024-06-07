@@ -4,6 +4,36 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+enum Instruction {
+    I_MOV   = 0x00,
+    I_LDW   = 0x10,
+    I_STW   = 0x20,
+    I_PUSH  = 0x30,
+    I_POP   = 0x40,
+    I_LDA   = 0x50,
+    I_JNZ   = 0x60,
+    I_INB   = 0x70,
+    I_OUTB  = 0x80,
+    I_ADD   = 0x90,
+    I_ADC   = 0xA0,
+    I_AND   = 0xB0,
+    I_OR    = 0xC0,
+    I_NOR   = 0xD0,
+    I_CMP   = 0xE0,
+    I_SUB   = 0xF0,
+};
+
+enum Register {
+    R_A = 0,
+    R_B = 1,
+    R_C = 2,
+    R_D = 3,
+    R_Z = 4,
+    R_L = 5,
+    R_H = 6,
+    R_F = 7,
+}
+
 #define ROM_SIZE 0x8000
 #define BANK_SIZE 0x4000
 #define RAM_SIZE 0x3ff0
@@ -52,6 +82,7 @@ typedef struct {
     bool running;
 } state_t;
 
+uint8_t peek(state_t*, uint16_t);
 void poke(state_t*, uint16_t, uint8_t);
 int load(state_t*, char*, uint16_t);
 void step(state_t*);

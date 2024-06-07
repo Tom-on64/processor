@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <unistd.h>
 #include "emu.h"
 
 int main(int argc, char** argv) {
@@ -27,7 +28,25 @@ int main(int argc, char** argv) {
     }
     printf("\n");
 
+    while (!(state.status & 0x01)) {
+        printf("%04x: %02x\n", state.memory.pc, peek(&state, state.memory.pc));
+        step(&state);
+        sleep(1);
+    }
+
     return 0;
+}
+
+void step(state_t* state) {
+    if (state->status & 0x01) return;
+
+    uint8_t ins = peek(state, state->memory.pc++);
+    
+}
+
+uint8_t peek(state_t* state, uint16_t address) {
+    // TODO: memory banks
+    return state->memory.raw[address];
 }
 
 void poke(state_t* state, uint16_t address, uint8_t value) {
