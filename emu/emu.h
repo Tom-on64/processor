@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define I_NAMES ((const char*[]) {\
+        "mov", "ldw", "stw", "push", "pop", "lda", "jnz", "inb",\
+        "outb", "add", "adc", "and", "or", "nor", "cmp", "sub" })
+#define I_NAME(_i) (I_NAMES)[(uint8_t)(_i >> 4)]
+
 enum Instruction {
     I_MOV   = 0x00,
     I_LDW   = 0x10,
@@ -32,7 +37,7 @@ enum Register {
     R_L = 5,
     R_H = 6,
     R_F = 7,
-}
+};
 
 #define ROM_SIZE 0x8000
 #define BANK_SIZE 0x4000

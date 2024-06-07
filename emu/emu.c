@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     printf("\n");
 
     while (!(state.status & 0x01)) {
-        printf("%04x: %02x\n", state.memory.pc, peek(&state, state.memory.pc));
+        printf("%04x: %s\n", state.memory.pc, I_NAME(peek(&state, state.memory.pc)));
         step(&state);
         sleep(1);
     }
@@ -41,7 +41,28 @@ void step(state_t* state) {
     if (state->status & 0x01) return;
 
     uint8_t ins = peek(state, state->memory.pc++);
-    
+    uint8_t reg, imm;
+
+    switch (ins & 0xf0) {
+        case I_MOV:
+        case I_LDW:
+        case I_STW:
+        case I_PUSH:
+        case I_POP:
+        case I_LDA:
+        case I_JNZ:
+        case I_INB:
+        case I_OUTB:
+        case I_ADD:
+        case I_ADC:
+        case I_AND:
+        case I_OR:
+        case I_NOR:
+        case I_CMP:
+        case I_SUB:
+        default:
+            break;
+    }
 }
 
 uint8_t peek(state_t* state, uint16_t address) {
