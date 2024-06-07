@@ -1,9 +1,9 @@
 === Overview ===
-* Custom designed computer
-* 8-bit data width
-* 16-bit address bus -> 64KiB (Up to 16MiB with banking)
-* Memory banking with 8-bit MB register -> 256 possible memory banks, each 16KiB
-* Device I/O with inb and outb instructions
+Custom designed computer
+8-bit data width
+16-bit address bus -> 64KiB (Up to 16MiB with banking)
+Memory banking with 8-bit MB register -> 256 possible memory banks, each 16KiB
+Device I/O with inb and outb instructions
 
 === Instructions ===
 
