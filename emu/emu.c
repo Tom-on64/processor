@@ -13,8 +13,6 @@
 void command(state_t*, char*, char*);
 
 int main(int argc, char** argv) {
-    printf("\nEMU %s monitor - Type 'help' for more information\n\n", VERSION);
-
     state_t state;
     memset(&state, 0, sizeof(state));
 
@@ -27,6 +25,8 @@ int main(int argc, char** argv) {
         fprintf(stderr, "%s: ROM Image file not found!\n", argv[0]);
         return 1;
     }
+    
+    printf("\nEMU %s monitor - Type 'help' for more information\n\n", VERSION);
 
     /*
     for (int i = 0; i < 256; i++) {
@@ -81,6 +81,8 @@ void command(state_t* state, char* command, char* out) {
 
     if (tokenCount == 0) {
         return;
+    } else if (strcmp(tokens[0], "cls") == 0) {
+        strcpy(out, "\x1b[H\x1b[J");
     } else if (strcmp(tokens[0], "exit") == 0) {
         exit(0);
     } else if (strcmp(tokens[0], "goto") == 0) {
@@ -99,6 +101,7 @@ void command(state_t* state, char* command, char* out) {
         state->status = status ^ 0x01;
     } else if (strcmp(tokens[0], "help") == 0) {
         strcpy(out, "EMU " VERSION " monitor help:\n"
+                " cls               Clear monitor output\n"
                 " exit              Stops the emulator and exits\n"
                 " goto <addr>       Sets PC to address\n"
                 " halt              Toggles the halt bit\n"
