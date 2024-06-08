@@ -33,7 +33,7 @@ start:
 ;
 ; _text:
 ; (start)
-; 00: 0A 0A
+; 00: 0A 09
 ; 02: 08 00
 ; 04: 09 01
 ; (start.loop)

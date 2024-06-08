@@ -1,11 +1,20 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "emu.h"
 
+#define VERSION "1.0.0"
+
+#define MAX_INPUT 1024
+#define MAX_OUTPUT 1024
+#define PROMPT "(emu) "
+
+void command(state_t*, char*, char*);
+
 int main(int argc, char** argv) {
+    printf("\nEMU %s monitor - Type 'help' for more information\n\n", VERSION);
+
     state_t state;
     memset(&state, 0, sizeof(state));
 
@@ -19,6 +28,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    /*
     for (int i = 0; i < 256; i++) {
         if (i % 16 == 0) {
             printf("\n0x%04x: ", i);
@@ -27,174 +37,125 @@ int main(int argc, char** argv) {
         printf("%02x ", state.memory.raw[i]);
     }
     printf("\n");
+    */
 
-    while (!(state.status & 0x01)) {
-        //printf("%04x: %s\n", state.memory.pc, I_NAME(peek(&state, state.memory.pc)));
-        step(&state);
-        //sleep(1);
+    while (1) {
+        char buf[MAX_INPUT] = { 0 };
+        char out[MAX_OUTPUT] = { 0 };
+
+        printf(PROMPT);
+        if (fgets(buf, MAX_INPUT, stdin) == NULL) break;
+        size_t len = strlen(buf);
+
+        if (len == 0) continue;
+        if (len > 0 && buf[len - 1] == '\n') {
+            buf[len - 1] = '\0';
+        }
+
+        command(&state, buf, out);
+
+        if (strlen(out) != 0) fprintf(stdout, "%s", out);
     }
-
-    printf("\nFinal state:\na: 0x%x b: 0x%x c: 0x%x d: 0x%x z: 0x%x hl: 0x%x\n", state.regs.a, state.regs.b, state.regs.c, state.regs.d, state.regs.z, state.regs.hl);
 
     return 0;
 }
 
-void step(state_t* state) {
-    if (state->status & 0x01) return;
+void command(state_t* state, char* command, char* out) {
+    char str[256];
+    char* token;
+    char* tokens[4];
+    uint8_t tokenCount = 0;
 
-    uint8_t ins = peek(state, state->memory.pc++);
-    uint8_t im8;
-    uint16_t im16;
+    strlcpy(str, command, sizeof(str));
 
-    switch (ins & 0xf0) {
-        case I_MOV:     // reg, reg/im8
-            im8 = peek(state, state->memory.pc++);
-            if (ins & 0x08) state->regs.raw[ins & 0x07] = im8;
-            else state->regs.raw[ins & 0x07] = state->regs.raw[im8 & 0x07];
-            break;
-        case I_LDW:     // reg, [HL/im16]
-            if (ins & 0x08) {
-                im16 = (uint16_t)peek(state, state->memory.pc++) | (uint16_t)(peek(state, state->memory.pc++) << 8);
-                state->regs.raw[ins & 0x07] = peek(state, im16);
-            } else {
-                state->regs.raw[ins & 0x07] = peek(state, state->regs.hl);
-            }
-            break;
-        case I_STW:     // [HL/im16], reg
-            if (ins & 0x08) {
-                im16 = (uint16_t)peek(state, state->memory.pc++) | (uint16_t)(peek(state, state->memory.pc++) << 8);
-                poke(state, im16, state->regs.raw[ins & 0x07]);
-            } else {
-                poke(state, state->regs.hl, state->regs.raw[ins & 0x07]);
-            }
-            break;
-        case I_PUSH:    // reg/im8
-            if (ins & 0x08) {
-                im8 = peek(state, state->memory.pc++);
-                push(state, im8);
-            } else push(state, state->regs.raw[ins & 0x07]);
-            break; 
-        case I_POP:     // reg
-            state->regs.raw[ins & 0x07] = pop(state);
-            break;
-        case I_LDA:     // im16
-            im16 = (uint16_t)peek(state, state->memory.pc++) | (uint16_t)(peek(state, state->memory.pc++) << 8);
-            state->regs.hl = im16;
-            break;
-        case I_JNZ:     // reg/im8
-            if (ins & 0x08) {
-                im8 = peek(state, state->memory.pc++);
-            } else im8 = state->regs.raw[ins & 0x07];
-            if (im8 != 0) {
-                state->memory.pc = state->regs.hl;
-            }
-            break;
-        case I_INB:     // reg, reg/im8
-            im8 = peek(state, state->memory.pc++);
-            if (ins & 0x08) state->regs.raw[ins & 0x07] = inb(state, im8);
-            else state->regs.raw[ins & 0x07] = inb(state, state->regs.raw[im8 & 0x07]);
-            break;
-        case I_OUTB:    // reg, reg/im8
-            im8 = peek(state, state->memory.pc++);
-            if (ins & 0x08) outb(state, im8, state->regs.raw[ins & 0x07]);
-            else outb(state, state->regs.raw[im8 & 0x07], state->regs.raw[ins & 0x07]);
-            break;
-        case I_ADD:     // reg, reg/im8
-            im8 = peek(state, state->memory.pc++);
-            if (ins & 0x08) state->regs.raw[ins & 0x07] += im8;
-            else state->regs.raw[ins & 0x07] += state->regs.raw[im8 & 0x07];
-            break;
-        case I_ADC:     // reg, reg/im8
-            im8 = peek(state, state->memory.pc++);
-            if (ins & 0x08) state->regs.raw[ins & 0x07] += im8 + (state->regs.f & F_CARRY);
-            else state->regs.raw[ins & 0x07] += state->regs.raw[im8 & 0x07] + (state->regs.f & F_CARRY);
-            break;
-        case I_AND:     // reg, reg/im8
-            im8 = peek(state, state->memory.pc++);
-            if (ins & 0x08) state->regs.raw[ins & 0x07] &= im8;
-            else state->regs.raw[ins & 0x07] &= state->regs.raw[im8 & 0x07];
-            break;
-        case I_OR:      // reg, reg/im8
-            im8 = peek(state, state->memory.pc++);
-            if (ins & 0x08) state->regs.raw[ins & 0x07] |= im8;
-            else state->regs.raw[ins & 0x07] |= state->regs.raw[im8 & 0x07];
-            break;
-        case I_NOR:     // reg, reg/im8
-            im8 = peek(state, state->memory.pc++);
-            if (ins & 0x08) state->regs.raw[ins & 0x07] = ~(state->regs.raw[ins & 0x07] | im8);
-            else state->regs.raw[ins & 0x07] = ~(state->regs.raw[ins & 0x07] | state->regs.raw[im8 & 0x07]);
-            break;
-        case I_CMP:     // reg, reg/im8
-            // TODO: Update flags
-            break;
-        case I_SUB:     // reg, reg/im8
-            im8 = peek(state, state->memory.pc++);
-            if (ins & 0x08) state->regs.raw[ins & 0x07] -= im8 - (state->regs.f & F_BORROW);
-            else state->regs.raw[ins & 0x07] -= state->regs.raw[im8 & 0x07] - (state->regs.f & F_BORROW);
-            break;
-        default:
-            fprintf(stderr, "%04x: %02x - Invalid Opcode\n", state->memory.pc - 1, ins);
-            break;
-    }
-}
+    token = strtok(str, " ");
+    while (token != NULL) {
+        if (tokenCount > 4) {
+            strcpy(out, "Too many arguments given\n");
+            return;
+        }
 
-uint8_t peek(state_t* state, uint16_t address) {
-    // TODO: memory banks
-    return state->memory.raw[address];
-}
-
-void poke(state_t* state, uint16_t address, uint8_t value) {
-    // TODO: Add memory bank stuff and write protection in ROM area
-    state->memory.raw[address] = value;
-}
-
-int load(state_t* state, char* file, uint16_t address) {
-    FILE* fp = fopen(file, "rb");
-    
-    if (fp == NULL) return -1;
-
-    fseek(fp, 0, SEEK_END);
-    size_t len = ftell(fp);
-    rewind(fp);
-
-    if (address + len > 0xffff) {
-        fprintf(stderr, "File too large! Will overwrite %lu bytes starting at 0x0000.\n", (address + len) % 0xffff);
+        tokens[tokenCount++] = token;
+        token = strtok(NULL, " ");
     }
 
-    uint8_t* buf = malloc(len);
-    if (!buf || fread(buf, len, 1, fp) != 1) {
-        return -1;
+    if (tokenCount == 0) {
+        return;
+    } else if (strcmp(tokens[0], "exit") == 0) {
+        exit(0);
+    } else if (strcmp(tokens[0], "goto") == 0) {
+        if (tokenCount < 2) {
+            strcpy(out, "Expected argument!\n");
+            return;
+        }
+
+        uint16_t addr = (uint16_t)strtoul(tokens[1], NULL, 0);
+        state->memory.pc = addr;
+        sprintf(out, "Jumped to 0x%04x\n", state->memory.pc);
+    } else if (strcmp(tokens[0], "halt") == 0) {
+        uint8_t status = state->status;
+        if (status & 0x01) strcpy(out, "System unhalted\n");
+        else strcpy(out, "System halted\n");
+        state->status = status ^ 0x01;
+    } else if (strcmp(tokens[0], "help") == 0) {
+        strcpy(out, "EMU " VERSION " monitor help:\n"
+                " exit              Stops the emulator and exits\n"
+                " goto <addr>       Sets PC to address\n"
+                " halt              Toggles the halt bit\n"
+                " help              Prints this help message\n"
+                " peek <addr>       Prints byte at memory address\n"
+                " poke <addr> <val> Sets a byte at memory address\n"
+                //" reboot            Reboots the system\n"
+                " regs              Prints register values\n"
+                " run               Runs until halt\n"
+                " step              Runs a single clock cycle\n"
+              );
+    } else if (strcmp(tokens[0], "peek") == 0) {
+        if (tokenCount < 2) {
+            strcpy(out, "Expected argument!\n");
+            return;
+        }
+
+        uint16_t addr = (uint16_t)strtoul(tokens[1], NULL, 0);
+        uint8_t value = peek(state, addr);
+        sprintf(out, "0x%04x: 0x%02x %4s\n", addr, value, I_NAME(value));
+    } else if (strcmp(tokens[0], "poke") == 0) {
+        if (tokenCount < 3) {
+            strcpy(out, "Expected argument!\n");
+            return;
+        }
+
+        uint16_t addr = (uint16_t)strtoul(tokens[1], NULL, 0);
+        uint8_t value = (uint8_t)strtoul(tokens[2], NULL, 0);
+        poke(state, addr, value);
+        sprintf(out, "[0x%04x] = 0x%02x\n", addr, value);
+    //} else if (strcmp(tokens[0], "reboot") == 0) {
+    } else if (strcmp(tokens[0], "regs") == 0) {
+        sprintf(out, "Register Values:\n"
+                    "A: 0x%02x\n"
+                    "B: 0x%02x\n"
+                    "C: 0x%02x\n"
+                    "D: 0x%02x\n"
+                    "Z: 0x%02x\n"
+                    "HL: 0x%04x\n"
+                    "F: 0x%02x\n"
+                    "MB: 0x%02x\n"
+                    "SP: 0x%04x\n"
+                    "PC: 0x%04x\n",
+                    state->regs.a, state->regs.b, state->regs.c, state->regs.d, state->regs.z, state->regs.hl, state->regs.f,
+                    state->memory.mb, state->memory.sp, state->memory.pc
+               );
+    } else if (strcmp(tokens[0], "run") == 0) {
+        while (!(state->status & 0x01)) {
+            step(state);
+        }
+        sprintf(out, "System halted at 0x%04x\n", state->memory.pc);
+    } else if (strcmp(tokens[0], "step") == 0) {
+        uint8_t opcode = peek(state, state->memory.pc);
+        sprintf(out, "0x%04x: %02x %4s\n", state->memory.pc, opcode, I_NAME(opcode));
+        step(state);
+    } else {
+        sprintf(out, "Unknown command '%s' Use 'help' for a list of available commands\n", tokens[0]);
     }
-
-    size_t i = 0;
-    while (i != len) { // Poke data into memory
-        poke(state, address + i, ((uint8_t*)buf)[i]);
-        i++;
-    }
-
-    fclose(fp);
-    free(buf);
-    return 0;
-}
-
-uint8_t inb(state_t* state, uint8_t port) {
-    if (port == 0x00) {
-        return state->status;
-    }
-    return 0;
-}
-
-void outb(state_t* state, uint8_t port, uint8_t value) {
-    if (port == 0x00) {
-        state->status = value;
-    }
-}
-
-void push(state_t* state, uint8_t value) {
-    poke(state, state->memory.sp--, value);
-}
-
-uint8_t pop(state_t* state) {
-    return peek(state, ++state->memory.sp);
 }
 
