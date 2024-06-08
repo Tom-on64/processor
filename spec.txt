@@ -31,7 +31,7 @@ D: NOR  reg, reg/im8   | reg = ~(reg | reg/im8)
 E: CMP* reg, reg/im8   | f = cmp(reg, reg/im8)
 F: SUB* reg, reg/im8   | reg -= reg/im8 - b
 
-reg  - A register
+reg  - A register (will be included in the opcode byte or immediately following the opcode byte)
 im8  - An 8-bit immediate value (Immediates are bytes following immediatly after the instruction)
 im16 - A 16-bit immediate value
 
