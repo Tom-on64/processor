@@ -29,9 +29,9 @@ int main(int argc, char** argv) {
     printf("\n");
 
     while (!(state.status & 0x01)) {
-        printf("%04x: %s\n", state.memory.pc, I_NAME(peek(&state, state.memory.pc)));
+        //printf("%04x: %s\n", state.memory.pc, I_NAME(peek(&state, state.memory.pc)));
         step(&state);
-        sleep(1);
+        //sleep(1);
     }
 
     printf("\nFinal state:\na: 0x%x b: 0x%x c: 0x%x d: 0x%x z: 0x%x hl: 0x%x\n", state.regs.a, state.regs.b, state.regs.c, state.regs.d, state.regs.z, state.regs.hl);
@@ -69,9 +69,26 @@ void step(state_t* state) {
             }
             break;
         case I_PUSH:    // reg/im8
+            if (ins & 0x08) {
+                im8 = peek(state, state->memory.pc++);
+                push(state, im8);
+            } else push(state, state->regs.raw[ins & 0x07]);
+            break; 
         case I_POP:     // reg
+            state->regs.raw[ins & 0x07] = pop(state);
+            break;
         case I_LDA:     // im16
+            im16 = (uint16_t)peek(state, state->memory.pc++) | (uint16_t)(peek(state, state->memory.pc++) << 8);
+            state->regs.hl = im16;
+            break;
         case I_JNZ:     // reg/im8
+            if (ins & 0x08) {
+                im8 = peek(state, state->memory.pc++);
+            } else im8 = state->regs.raw[ins & 0x07];
+            if (im8 != 0) {
+                state->memory.pc = state->regs.hl;
+            }
+            break;
         case I_INB:     // reg, reg/im8
             im8 = peek(state, state->memory.pc++);
             if (ins & 0x08) state->regs.raw[ins & 0x07] = inb(state, im8);
@@ -88,16 +105,35 @@ void step(state_t* state) {
             else state->regs.raw[ins & 0x07] += state->regs.raw[im8 & 0x07];
             break;
         case I_ADC:     // reg, reg/im8
+            im8 = peek(state, state->memory.pc++);
+            if (ins & 0x08) state->regs.raw[ins & 0x07] += im8 + (state->regs.f & F_CARRY);
+            else state->regs.raw[ins & 0x07] += state->regs.raw[im8 & 0x07] + (state->regs.f & F_CARRY);
+            break;
         case I_AND:     // reg, reg/im8
+            im8 = peek(state, state->memory.pc++);
+            if (ins & 0x08) state->regs.raw[ins & 0x07] &= im8;
+            else state->regs.raw[ins & 0x07] &= state->regs.raw[im8 & 0x07];
+            break;
         case I_OR:      // reg, reg/im8
             im8 = peek(state, state->memory.pc++);
             if (ins & 0x08) state->regs.raw[ins & 0x07] |= im8;
             else state->regs.raw[ins & 0x07] |= state->regs.raw[im8 & 0x07];
             break;
         case I_NOR:     // reg, reg/im8
+            im8 = peek(state, state->memory.pc++);
+            if (ins & 0x08) state->regs.raw[ins & 0x07] = ~(state->regs.raw[ins & 0x07] | im8);
+            else state->regs.raw[ins & 0x07] = ~(state->regs.raw[ins & 0x07] | state->regs.raw[im8 & 0x07]);
+            break;
         case I_CMP:     // reg, reg/im8
+            // TODO: Update flags
+            break;
         case I_SUB:     // reg, reg/im8
+            im8 = peek(state, state->memory.pc++);
+            if (ins & 0x08) state->regs.raw[ins & 0x07] -= im8 - (state->regs.f & F_BORROW);
+            else state->regs.raw[ins & 0x07] -= state->regs.raw[im8 & 0x07] - (state->regs.f & F_BORROW);
+            break;
         default:
+            fprintf(stderr, "%04x: %02x - Invalid Opcode\n", state->memory.pc - 1, ins);
             break;
     }
 }
@@ -152,5 +188,13 @@ void outb(state_t* state, uint8_t port, uint8_t value) {
     if (port == 0x00) {
         state->status = value;
     }
+}
+
+void push(state_t* state, uint8_t value) {
+    poke(state, state->memory.sp--, value);
+}
+
+uint8_t pop(state_t* state) {
+    return peek(state, ++state->memory.sp);
 }
 

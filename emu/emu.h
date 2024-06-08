@@ -39,6 +39,13 @@ enum Register {
     R_F = 7,
 };
 
+enum Flag {
+    F_LESS   = 0x01,
+    F_EQUAL  = 0x02,
+    F_CARRY  = 0x04,
+    F_BORROW = 0x08,
+};
+
 #define ROM_SIZE 0x8000
 #define BANK_SIZE 0x4000
 #define RAM_SIZE 0x3ff0
