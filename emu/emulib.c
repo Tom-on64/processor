@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include "emu.h"
+#include "../common/proc.h"
 
 void step(state_t* state) {
     if (state->status & 0x01) return;
