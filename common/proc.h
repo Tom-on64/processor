@@ -1,6 +1,8 @@
 #ifndef PROC_H
 #define PROC_H
 
+#include <stdbool.h>
+
 #define I_NAMES ((const char*[]) {\
         "mov", "ldw", "stw", "push", "pop", "lda", "jnz", "inb",\
         "outb", "add", "adc", "and", "or", "nor", "cmp", "sub" })
